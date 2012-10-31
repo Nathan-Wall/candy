@@ -1,0 +1,3 @@
+[submodule "inHarmony"]
+	path = inHarmony
+	url = https://github.com/wnwall/inHarmony
