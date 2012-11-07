@@ -57,3 +57,9 @@ function methods(native, staticO, instance) {
 	return staticO;
 
 }
+
+function isSameValue(a, b) {
+	// egal function. Exposes ES5 SameValue function.
+	return a === b && (a !== 0 || 1 / a === 1 / b) // false for +0 vs -0
+		|| a !== a && b !== b; // true for NaN vs NaN
+}

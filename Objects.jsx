@@ -4,17 +4,14 @@ var Objects = (function() {
 
 		Object,
 
-		// Static methods
+		// Constructor methods
 		{
 
-			isPrototypeOf: Functions.lazyBind(Object.prototype.isPrototypeOf),
+			isPrototype: Functions.lazyBind(Object.prototype.isPrototypeOf),
 			hasOwn: Functions.lazyBind(Object.prototype.hasOwnProperty),
 
-			getClassOf: function getClassOf(obj) {
-				var s = Object.prototype.toString.apply(obj),
-					match = /\[object\s(\w+)\]/.exec(s);
-				if (!match || !match[1]) return null;
-				return match[1];
+			getTagOf: function getTagOf(obj) {
+				return Object.prototype.toString.call(obj).slice(8, -1);
 			},
 
 			getUncommonPropertyNames: (function() {
@@ -32,7 +29,7 @@ var Objects = (function() {
 				function concatUncommonNames(from, compareWith) {
 					if (Object(from) != from
 						|| from === compareWith
-						|| isA(compareWith, from)) return [ ];
+						|| Objects.isPrototype(from, compareWith)) return [ ];
 					return Object.getOwnPropertyNames(from).concat(
 						concatUncommonNames(Object.getPrototypeOf(from), compareWith));
 				}
@@ -53,7 +50,7 @@ var Objects = (function() {
 			mixin: function mixin(/* ...withs */) {
 
 				if (Object(this) != this)
-					throw new TypeError('Cannot call mixin on a non-object: ' + what);
+					throw new TypeError('Cannot call mixin on a non-object: ' + this);
 
 				if (!Object.isExtensible(this))
 					throw new Error('Cannot call mixin on a non-exensible object');
@@ -131,7 +128,7 @@ var Objects = (function() {
 						if (typeof input != 'object' || input === null)
 							return input;
 
-						switch(getClassOf(input)) {
+						switch(Objects.getTagOf(input)) {
 
 							case 'Boolean':		output = new Boolean(input.valueOf()); break;
 							case 'Number':		output = new Number(input.valueOf()); break;
@@ -141,7 +138,7 @@ var Objects = (function() {
 							// case File: break;
 							// case Blob: break;
 							// case FileList: break;
-							case 'Array':	 	output = new Array(input.length); break;
+							case 'Array':		output = new Array(input.length); break;
 							//case TypedArray: break;
 
 							case 'Function':

@@ -104,9 +104,17 @@ var Arrays = (function() {
 				return flattened;
 			},
 
+			mapToObject: function mapToObject(f, context) {
+				// TODO: Better name?
+				var obj = Object.create(null);
+				Arrays.forEach(this,
+					function(key, i) { obj[key] = f.call(context, key, i, obj); });
+				return obj;
+			},
+
 			createTruthTable: function createTruthTable() {
 				// TODO: Better name?
-				var obj = { };
+				var obj = Object.create(null);
 				Arrays.forEach(this,
 					function(key) { obj[key] = true; });
 				return obj;
@@ -115,10 +123,10 @@ var Arrays = (function() {
 			search: function search(value) {
 				// Similar to indexOf, but matches with egal when needed to keep with ES5 SameValue function.
 				var index = -1;
-				if(v !== v || v === 0) {
+				if (v !== v || v === 0) {
 					// Use egal to test NaN and +0/-0 to keep with ES5 SameValue function.
 					Arrays.some(this, function(u, i) {
-						if(Object.is(u, v)) {
+						if (isSameValue(u, v)) {
 							index = i;
 							return true;
 						}
@@ -128,17 +136,6 @@ var Arrays = (function() {
 					// Use indexOf when possible, for speed.
 					return Arrays.indexOf(this, value);
 				}
-			},
-
-			contains: function contains(/* val1, val2, ... */) {
-				// I have switched from using search to using indexOf because it makes the most sense to me to search
-				// by comparing with === over egal. I have seen a very small amount of discussion concerning ES Harmony
-				// contains, with one strong proponent for egal over ===. We may should go with search if ES6 goes with
-				// egal on this issue.
-				// TODO: Follow up on whether contains is intended for ES6 and what its implementation will be.
-				return Arrays.every(arguments, function(v) {
-					return !!~Arrays.indexOf(this, v);
-				});
 			},
 
 			// Provides a stable sort, which doesn't alter the original array.
@@ -158,9 +155,9 @@ var Arrays = (function() {
 								});
 								return r.every(function(u, j) {
 									var next = r[j + 1];
-									if(!next) return true;
-									for(var k = 0; k <= i; k++) {
-										if(u[k] < next[k]) return true;
+									if (!next) return true;
+									for (var k = 0; k <= i; k++) {
+										if (u[k] < next[k]) return true;
 									}
 									return u.i < next.i;
 								});
@@ -185,6 +182,7 @@ var Arrays = (function() {
 			},
 
 			without: function without(/* ...values */) {
+				// TODO: Whether we should continue to use contains depends on whether contains ends up using SameValue or ===.
 				var args = Arrays.slice(arguments);
 				return Arrays.filter(this, function(u) {
 						return !Arrays.contains(args, u);
