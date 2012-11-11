@@ -143,9 +143,9 @@ var Arrays = (function() {
 				var nativeIsStable = (function() {
 						return testStability(32, 2) && testStability(512, 16);
 						function testStability(size, resolution) {
-							var res = Range.use(resolution),
-								r = Range.use(size).map(function(u) {
-									return extend(res.map(function() {
+							var res = createRange(resolution),
+								r = createRange(size).map(function(u) {
+									return Objects.mixin(res.map(function() {
 										return Math.random > .5 ? 0 : 1;
 									}), { i: u });
 								});
@@ -175,6 +175,12 @@ var Arrays = (function() {
 							return u.value;
 						});
 					};
+				function createRange(total) {
+					var r = [ ];
+					for (var i = 0; i < total; i++)
+						r.push(i);
+					return r;
+				}
 			})(),
 
 			mapPartial: function mapPartial(f) {
@@ -201,3 +207,6 @@ var Arrays = (function() {
 	);
 
 })();
+
+// Create lazyTie method by calling it.
+Functions.instance.lazyTie();
