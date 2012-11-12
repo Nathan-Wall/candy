@@ -110,6 +110,29 @@ var Sets = (function() {
 					return !Set.prototype.has.call(B, value);
 				});
 
+			},
+
+			isSubsetOf: function(set) {
+
+				var A = Object(this), B = Object(set);
+
+				if (!Iterables.isIterable(A))
+					throw new TypeError('Iterable this expected.');
+
+				if (!Iterables.isIterable(B))
+					throw new TypeError('Iterable argument expected.');
+
+				if (!(A instanceof Set))
+					A = new Set(Iterables.convert(A));
+
+				if (!(B instanceof Set))
+					B = new Set(Iterables.convert(B));
+
+				return !Iterables.some(A, function(value) {
+					// TODO: has might change to contains in upcoming draft
+					return !Set.prototype.has.call(B, value);
+				});
+
 			}
 
 		}

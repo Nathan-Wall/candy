@@ -10,8 +10,8 @@ var Arrays = (function() {
 		{
 
 			isArrayLike: function isArrayLike() {
-				// This tests for a class of Array-like objects which we call Lists.
-				// A List is an object with a length property which isn't a string.
+				// This tests for a class of Array-like objects.
+				// An Array-like object is an object with a length property which isn't a string.
 				return 'length' in this && typeof this != 'string';
 			},
 
@@ -22,7 +22,7 @@ var Arrays = (function() {
 				var emptyArray = [ ];
 				return function merge() {
 					return Arrays.reduce(arguments, function(prev, cur) {
-						if (!Array.isArray(cur) && Arrays.isList(cur))
+						if (!Array.isArray(cur) && Arrays.isArrayLike(cur))
 							return prev.concat(Arrays.slice(cur));
 						return prev.concat(cur);
 					}, Arrays.slice(this));
@@ -83,21 +83,21 @@ var Arrays = (function() {
 
 				persuade.extendedTypes = {
 					'array':	function(value) { return Array.isArray(value); },
-					'list':		function(value) { return Lists.isList(value); }
+					'~array':	function(value) { return Arrays.isArrayLike(value); }
 				};
 
 				return persuade;
 
 			})(),
 
-			pushAll: function(list) {
-				return Array.prototype.push.apply(this, list);
+			pushAll: function(arrayLike) {
+				return Array.prototype.push.apply(this, arrayLike);
 			},
 
 			flatten: function flatten() {
 				var flattened = [ ];
 				Arrays.forEach(this, function(u) {
-					if (Arrays.isList(u))
+					if (Arrays.isArrayLike(u))
 						Arrays.pushAll(flattened, Arrays.flatten(u));
 					else flattened.push(u);
 				});
@@ -167,7 +167,7 @@ var Arrays = (function() {
 				return nativeIsStable
 					? Array.prototype.sort
 					: function stableSort(f) {
-						return Lists.map(this, function(u, i) {
+						return Arrays.map(this, function(u, i) {
 							return { value: u, index: i };
 						}).sort(function(a, b) {
 							return (f ? f(a.value, b.value) : a.value - b.value) || a.index - b.index;

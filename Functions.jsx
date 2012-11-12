@@ -216,7 +216,7 @@ var Functions = (function() {
 					throw new TypeError('preload cannot be called on a non-function: ' + f);
 
 				return Functions.createWrapper(f, f.length - preArgs.length, function preloadedFunction() {
-					return f.apply(this, Arrays.concat(preArgs, arguments));
+					return f.apply(this, Arrays.merge(preArgs, arguments));
 				});
 
 			},
@@ -232,7 +232,7 @@ var Functions = (function() {
 					throw new TypeError('postload cannot be called on a non-function: ' + f);
 
 				return Functions.createWrapper(f, f.length - postArgs.length, function postloadedFunction() {
-					return f.apply(this, Arrays.concat(arguments, postArgs));
+					return f.apply(this, Arrays.merge(arguments, postArgs));
 				});
 
 			},
@@ -333,7 +333,7 @@ var Functions = (function() {
 		return Functions.createWrapper(f, f.length - preArgs.length, function chokedWrapper() {
 			var time = new Date().getTime(),
 				nInterval = typeof interval == 'function' ? interval() : interval;
-			args = Lists.concat(preArgs, arguments);
+			args = Arrays.merge(preArgs, arguments);
 			if (immediate && !immediateCalled) {
 				f.apply(context, args);
 				immediateCalled = true;
