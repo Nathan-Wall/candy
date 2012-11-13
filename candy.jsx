@@ -11,6 +11,7 @@ var candy = (function() {
 		Functions: Functions,
 		Iterables: Iterables,
 		Map: Map,
+		Numbers: Numbers,
 		Objects: Objects,
 		Sets: Sets,
 		Symbols: Symbols,
