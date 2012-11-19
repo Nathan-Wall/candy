@@ -172,11 +172,20 @@ var Functions = (function() {
 
 			},
 
-			lazyTie: function lazyTiePlaceholder() {
-				// We must delay the creation of lazyTie until after Arrays has been defined.
-				Functions.instance.lazyTie = Functions.lazyBind(Functions.lazySpread);
-				Functions.lazyTie = Functions.lazyBind(Functions.lazySpread);
-				return this.lazyTie;
+			lazyTie: function lazyTie(/* preArgs */) {
+
+				var f = this,
+					preArgs = typeof arguments[1] != 'undefined' ? arguments[1] : [ ],
+					lazySpreed;
+
+				if (typeof f != 'function')
+					throw new TypeError('Function expected: ' + f);
+
+				if (!Arrays.isArrayLike(preArgs))
+					throw new TypeError('preArgs argument must be an array-like object: ' + preArgs);
+
+				return Functions.lazyBind(Functions.lazySpread(f, preArgs));
+
 			},
 
 			invert: function invert(/* length */) {

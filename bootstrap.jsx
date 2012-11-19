@@ -114,14 +114,25 @@ var createWrapper = (function() {
 
 })();
 
-function methods(native, staticO, instance) {
+function methods(builtIn, staticO, instance) {
 
-	var O = Object.create(null);
+	var O = Object.create(null),
 
-	O.instance = Object.create(null);
+		instanceMethods = Object.create(null);
 
-	// Lazy Bind native.prototype methods and instance methods
-	[ native && native.prototype, instance ].forEach(function(obj) {
+	O[$builtIn] = builtIn;
+	Object.defineProperty(O, 'instance', {
+
+		value: instanceMethods,
+
+		enumerable: false,
+		writable: true,
+		configurable: true
+
+	});
+
+	// Lazy Bind builtIn.prototype methods and instance methods
+	[ builtIn && builtIn.prototype, instance ].forEach(function(obj) {
 
 		if (!obj) return;
 
@@ -143,7 +154,7 @@ function methods(native, staticO, instance) {
 
 				});
 
-				Object.defineProperty(O.instance, name, {
+				Object.defineProperty(instanceMethods, name, {
 
  					value: method,
 

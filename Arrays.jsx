@@ -90,6 +90,7 @@ var Arrays = (function() {
 
 			})(),
 
+			// We cannot use lazySpread here because Arrays must be defined in order for lazySpread to work.
 			pushAll: function(arrayLike) {
 				return Array.prototype.push.apply(this, arrayLike);
 			},
@@ -107,6 +108,8 @@ var Arrays = (function() {
 			mapToObject: function mapToObject(f, context) {
 				// TODO: Better name?
 				var obj = Object.create(null);
+				if (typeof f != 'function')
+					throw new TypeError('Function expected: ' + f);
 				Arrays.forEach(this,
 					function(key, i) { obj[key] = f.call(context, key, i, obj); });
 				return obj;
@@ -183,6 +186,7 @@ var Arrays = (function() {
 				}
 			})(),
 
+			// Same as Array#map, but any time the callback returns undefined, it is filtered from the result array.
 			mapPartial: function mapPartial(f) {
 				return Arrays.filterUndefined(Arrays.map(this, f));
 			},
@@ -207,6 +211,3 @@ var Arrays = (function() {
 	);
 
 })();
-
-// Create lazyTie method by calling it.
-Functions.instance.lazyTie();
