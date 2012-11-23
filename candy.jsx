@@ -1,10 +1,10 @@
 var candy = (function() {
 
-	var _inHarmony_forceShim = true,
-
-		$builtIn = new Symbol();
+	var _inHarmony_forceShim = true;
 
 	!!!includes('inHarmony', 'bootstrap.jsx', 'Functions.jsx', 'Objects.jsx');
+
+	var $builtIn = new Symbol();
 
 	return {
 

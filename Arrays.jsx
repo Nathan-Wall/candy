@@ -15,6 +15,12 @@ var Arrays = (function() {
 				return 'length' in this && typeof this != 'string';
 			},
 
+			equals: function(a, b) {
+				return Arrays.every(a, function(u, i) {
+					return Object.is(u, b[i]);
+				});
+			},
+
 			// The regular Array concat doesn't work because it doesn't perceive a Array-like object
 			// as an iterable, and thus concats it as an object rather than an Array.
 			// ex: [ 'blue' ].concat(arguments); where arguments = [ 'red' ]; produces [ 'blue', [ 'red' ] ].
@@ -40,7 +46,7 @@ var Arrays = (function() {
 					 */
 
 					var A, from, to, types,
-						argNum = 1, curItem;
+						argNum = 0, curItem;
 
 					if (typeof arguments[argNum] == 'number') from = arguments[argNum++];
 					if (typeof arguments[argNum] == 'number') to = arguments[argNum++];
