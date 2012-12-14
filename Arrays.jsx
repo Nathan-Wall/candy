@@ -16,9 +16,10 @@ var Arrays = (function() {
 			},
 
 			equals: function(a, b) {
-				return Arrays.every(a, function(u, i) {
-					return Object.is(u, b[i]);
-				});
+				return a.length == b.length
+					&& Arrays.every(a, function(u, i) {
+						return Object.is(u, b[i]);
+					});
 			},
 
 			// The regular Array concat doesn't work because it doesn't perceive a Array-like object
@@ -113,15 +114,28 @@ var Arrays = (function() {
 
 			mapToObject: function mapToObject(f, context) {
 				// TODO: Better name?
+
 				var obj = Object.create(null);
+
+				// If no function is specified, a default one will be provided which just returns each item.
+				if (f == null)
+					f = Functions.identity;
+
 				if (typeof f != 'function')
 					throw new TypeError('Function expected: ' + f);
+
 				Arrays.forEach(this,
-					function(key, i) { obj[key] = f.call(context, key, i, obj); });
+					function(u, i) {
+						var pair = f.call(context, u, i, obj);
+						if (pair != null)
+							obj[pair[0]] = pair[1];
+					});
+
 				return obj;
+
 			},
 
-			createTruthTable: function createTruthTable() {
+			toTruthTable: function toTruthTable() {
 				// TODO: Better name?
 				var obj = Object.create(null);
 				Arrays.forEach(this,

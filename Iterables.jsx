@@ -70,7 +70,7 @@ var Iterables = (function() {
 						while (true)
 							f.call(thisArg, iterator.next(), O);
 					} catch(x) {
-						if (x !== StopIteration)
+						if (Objects.getTagOf(x) != 'StopIteration')
 							throw x;
 					}
 
@@ -134,7 +134,7 @@ var Iterables = (function() {
 							}
 						}, thisArg);
 					} catch(x) {
-						if (x !== StopIteration)
+						if (Objects.getTagOf(x) != 'StopIteration')
 							throw x;
 					}
 
@@ -155,7 +155,7 @@ var Iterables = (function() {
 							}
 						}, thisArg);
 					} catch(x) {
-						if (x !== StopIteration)
+						if (Objects.getTagOf(x) != 'StopIteration')
 							throw x;
 					}
 

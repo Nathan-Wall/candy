@@ -6,98 +6,111 @@ var candy = (function() {
 
 	var $builtIn = new Symbol();
 
-	return {
+	var modules = {
+			Arrays: Arrays,
+			Functions: Functions,
+			Iterables: Iterables,
+			Map: Map,
+			Numbers: Numbers,
+			Objects: Objects,
+			Sets: Sets,
+			Symbols: Symbols,
+			WeakMap: WeakMap
+		},
 
-		$reconstructor: $reconstructor,
+		candy = {
 
-		Arrays: Arrays,
-		Functions: Functions,
-		Iterables: Iterables,
-		Map: Map,
-		Numbers: Numbers,
-		Objects: Objects,
-		Sets: Sets,
-		Symbols: Symbols,
-		WeakMap: WeakMap,
+			$reconstructor: $reconstructor,
 
-		coat: (function () {
+			coat: (function () {
 
-			var $extended = new Symbol(),
-// TODO: Iterables?
-				coatings = {
-					'Object': [ Objects ],
-					'Array': [ Objects, Arrays ],
-					'Function': [ Objects, Functions ],
-					'Number': [ Objects, Numbers ],
-					'Set': [ Objects, Sets ],
-					'Symbol': [ Objects, Symbols ]
+				var $extended = new Symbol(),
+	// TODO: Iterables?
+					coatings = {
+						'Object': [ Objects ],
+						'Array': [ Objects, Arrays ],
+						'Function': [ Objects, Functions ],
+						'Number': [ Objects, Numbers ],
+						'Set': [ Objects, Sets ],
+						'Symbol': [ Objects, Symbols ]
+					};
+
+				return function extend(obj/*, override */) {
+
+					if (Object(obj) != obj)
+						throw new TypeError('Cannot coat a non-object: ' + obj);
+
+					var override = !!arguments[1];
+
+					if (obj[$extended])
+						return;
+
+					if (!Object.isExtensible(obj))
+						throw new Error('Object is not extensible.');
+
+					obj[$extended] = true;
+
+
+
 				};
 
-			return function extend(obj/*, override */) {
+			})(),
 
-				if (Object(obj) != obj)
-					throw new TypeError('Cannot coat a non-object: ' + obj);
+			coatBuiltIns: (function() {
 
-				var override = !!arguments[1];
+				var extended = false,
 
-				if (obj[$extended])
-					return;
+				// TODO: Iterables?
+					extensions = [
+						Arrays, Functions, Numbers, Objects, Sets, Symbols
+					];
 
-				if (!Object.isExtensible(obj))
-					throw new Error('Object is not extensible.');
+				return function extendBuiltIns(/* override */) {
 
-				obj[$extended] = true;
+					if (extended)
+						return;
 
+					extended = true;
 
+					var override = !!arguments[0];
 
-			};
+					extensions.forEach(function(extension) {
 
-		})(),
+						var builtIn = extension[$builtIn];
 
-		coatBuiltIns: (function() {
+						Object.getOwnPropertyNames(extension).forEach(function(name) {
+							// TODO: Check for non-configurable existing properties before trying to override
+							if (name != 'instance' && (override || !(name in builtIn)))
+								Object.defineProperty(builtIn,
+									Object.getOwnPropertyDescriptor(extension, name));
 
-			var extended = false,
+						});
 
-			// TODO: Iterables?
-				extensions = [
-					Arrays, Functions, Numbers, Objects, Sets, Symbols
-				];
+						Object.getOwnPropertyNames(extension.instance).forEach(function(name) {
+							// TODO: Check for non-configurable existing properties before trying to override
+							if (override || !(name in builtIn.prototype))
+								Object.defineProperty(builtIn.prototype,
+									Object.getOwnPropertyDescriptor(extension.instance, name));
 
-			return function extendBuiltIns(/* override */) {
-
-				if (extended)
-					return;
-
-				extended = true;
-
-				var override = !!arguments[0];
-
-				extensions.forEach(function(extension) {
-
-					var builtIn = extension[$builtIn];
-
-					Object.getOwnPropertyNames(extension).forEach(function(name) {
-						// TODO: Check for non-configurable existing properties before trying to override
-						if (name != 'instance' && (override || !(name in builtIn)))
-							Object.defineProperty(builtIn,
-								Object.getOwnPropertyDescriptor(extension, name));
+						});
 
 					});
 
-					Object.getOwnPropertyNames(extension.instance).forEach(function(name) {
-						// TODO: Check for non-configurable existing properties before trying to override
-						if (override || !(name in builtIn.prototype))
-							Object.defineProperty(builtIn.prototype,
-								Object.getOwnPropertyDescriptor(extension.instance, name));
+				};
 
-					});
+			})()
 
-				});
+		};
 
-			};
+	Object.keys(modules).forEach(function(name) {
+		var module = candy[name] = modules[name];
+		Object.getOwnPropertyNames(module).forEach(function(prop) {
+			var method = module[method];
+			if (!candy.hasOwnProperty(prop) && typeof method == 'function')
+				candy[prop] = method;
+		});
+	});
 
-		})()
-
-	};
+	return candy;
 
 })();

@@ -12,8 +12,12 @@ var Functions = (function() {
 		// Constructor methods
 		{
 
-			echo: function(X) {
-				return function() { return X; };
+			identity: function identity(X) {
+				return X;
+			},
+
+			echo: function echo(X) {
+				return function echoer() { return X; };
 			}
 
 		},
@@ -287,31 +291,47 @@ var Functions = (function() {
 
 			},
 
-			throttle: function throttle(/* [args], [interval], [immediate] */) {
+			throttle: function throttle(/* [arguments], [interval], [immediate], [contextual] */) {
 
-				var f = this;
+				var f = this,
+					args;
 
-				if (typeof f != 'function')
+				// TODO: Reflection.getTypeOf
+				if (Reflection.getTypeOf(f) == 'object') {
+					args = [ ];
+					if ('arguments' in f) args.push(f.arguments);
+					if ('interval' in f) args.push(f.interval);
+					if ('immediate' in f) args.push(f.immediate);
+					if ('contextual' in f) args.push(f.contextual);
+					return throttle.apply(f.function, args);
+				} else if (typeof f != 'function')
 					throw new TypeError('throttle cannot be called on a non-function: ' + f);
 
-				var args = Arrays.persuade(arguments, [ 'array', 'number|function', 'boolean' ]),
-					callArgs = args[1], interval = args[2], immediate = args[3];
+				args = Arrays.persuade(arguments, [ 'array', 'number|function', 'boolean', 'boolean' ]);
+				var callArgs = args[1], interval = args[2], immediate = args[3], contextual = args[4];
 
-				return createChoke(f, callArgs, interval, false, immediate);
+				return createChoke(f, callArgs, interval, false, immediate, contextual);
 
 			},
 
-			debounce: function debounce(/* [args], [interval], [immediate] */) {
+			debounce: function debounce(/* [arguments], [interval], [immediate], [contextual] */) {
 
 				var f = this;
 
-				if (typeof f != 'function')
+				if (Reflection.getTypeOf(f) == 'object') {
+					args = [ ];
+					if ('arguments' in f) args.push(f.arguments);
+					if ('interval' in f) args.push(f.interval);
+					if ('immediate' in f) args.push(f.immediate);
+					if ('contextual' in f) args.push(f.contextual);
+					return debounce.apply(f.function, args);
+				} else if (typeof f != 'function')
 					throw new TypeError('debounce cannot be called on a non-function: ' + f);
 
-				var args = Arrays.persuade(arguments, [ 'array', 'number|function', 'boolean' ]),
-					callArgs = args[1], interval = args[2], immediate = args[3];
+				var args = Arrays.persuade(arguments, [ 'array', 'number|function', 'boolean', 'boolean' ]),
+					callArgs = args[1], interval = args[2], immediate = args[3], contextual = args[4];
 
-				return createChoke(f, callArgs, interval, false, immediate);
+				return createChoke(f, callArgs, interval, false, immediate, contextual);
 
 			},
 
@@ -336,30 +356,57 @@ var Functions = (function() {
 		}
 	);
 
-	function createChoke(f, preArgs, interval, debounce, immediate) {
-		var context = this, args, immediateCalled, tm, endTime;
-		if (interval == undefined) interval = 50;
-		return Functions.createWrapper(f, f.length - preArgs.length, function chokedWrapper() {
-			var time = new Date().getTime(),
-				nInterval = typeof interval == 'function' ? interval() : interval;
-			args = Arrays.merge(preArgs, arguments);
-			if (immediate && !immediateCalled) {
-				f.apply(context, args);
-				immediateCalled = true;
-			}
-			if (debounce && tm != null
-				|| time + nInterval < endTime) {
-				clearTimeout(tm);
-				tm = null;
-			}
-			if (tm == null) {
-				tm = setTimeout(function() {
-					if (!immediate || !immediateCalled) f.apply(context, args);
-					tm = null;
-				}, nInterval);
-				endTime = time + nInterval;
-			}
-		});
+	function createChoke(f, preArgs, interval, debounce, immediate, contextual) {
+
+		var context = this, args, immediateCalled, tm, endTime, chokeMap;
+
+		if (interval == null)
+			interval = 0;
+
+		return Functions.createWrapper(
+			contextual
+				? function chokedWrapper() {
+
+					if (!chokeMap)
+						chokeMap = new WeakMap();
+
+					var F = chokeMap.get(this);
+
+					if (!F)
+						chokeMap.set(this, F = createChoke(f, preArgs, interval, debounce, immediate, false));
+
+					F.call(this, arguments);
+
+				}
+				: function chokedWrapper() {
+
+					var time = +new Date(),
+						nInterval = typeof interval == 'function' ? interval() : interval;
+
+					args = Arrays.merge(preArgs, arguments);
+
+					if (immediate && !immediateCalled) {
+						f.apply(context, args);
+						immediateCalled = true;
+					}
+
+					if (debounce && tm != null
+						|| time + nInterval < endTime) {
+						clearTimeout(tm);
+						tm = null;
+					}
+
+					if (tm == null) {
+						tm = setTimeout(function() {
+							if (!immediate || !immediateCalled) f.apply(context, args);
+							tm = null;
+						}, nInterval);
+						endTime = time + nInterval;
+					}
+
+				},
+			f.length - preArgs.length);
+
 	}
 
 })();

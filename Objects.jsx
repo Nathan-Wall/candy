@@ -5,44 +5,7 @@ var Objects = (function() {
 		Object,
 
 		// Constructor methods
-		{
-
-			isPrototype: Functions.lazyBind(Object.prototype.isPrototypeOf),
-			hasOwn: Functions.lazyBind(Object.prototype.hasOwnProperty),
-
-			getTagOf: function getTagOf(obj) {
-				return Object.prototype.toString.call(obj).slice(8, -1);
-			},
-
-			getUncommonPropertyNames: (function() {
-
-				return function getUncommonPropertyNames(from, compareWith) {
-					var namesMap = Object.create(null);
-					return concatUncommonNames(from, compareWith)
-						.filter(function(u) {
-							if (namesMap[u]) return false;
-							namesMap[u] = true;
-							return true;
-						});
-				};
-
-				function concatUncommonNames(from, compareWith) {
-					if (Object(from) != from
-						|| from === compareWith
-						|| Objects.isPrototype(from, compareWith)) return [ ];
-					return Object.getOwnPropertyNames(from).concat(
-						concatUncommonNames(Object.getPrototypeOf(from), compareWith));
-				}
-
-			})(),
-
-			getPropertyDescriptor: function getPropertyDescriptor(obj, name) {
-				if (Object(obj) !== obj) return undefined;
-				return Object.getOwnPropertyDescriptor(obj, name)
-					|| getPropertyDescriptor(Object.getPrototypeOf(obj), name);
-			}
-
-		},
+		null,
 
 		// Instance methods
 		{
@@ -90,9 +53,8 @@ var Objects = (function() {
 
 				// This algorithm simply creates a new object with the same prototype and then mixes in the own properties.
 				// It will also mixin any uncommon properties from other arguments.
-				var args = [ Object.create(Object.getPrototypeOf(this)) ];
-				Arrays.pushAll(args, arguments);
-				return mixin.apply(null, args);
+				return Objects.mixin.apply(Object.create(Object.getPrototypeOf(this)), merge([ this ], arguments));
+				// return apply(mixin, create(getPrototypeOf(this)), merge([ this ]), arguments);
 
 			},
 
