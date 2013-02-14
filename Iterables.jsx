@@ -13,7 +13,7 @@ var Iterables = (function() {
 
 					var O = Object(obj);
 
-					return 'length' in O || Symbols.isIn($$iterator, O);
+					return 'length' in O || _Symbol.isIn($$iterator, O);
 
 				},
 
@@ -23,7 +23,7 @@ var Iterables = (function() {
 						var O = Object(obj),
 							iterator, S;
 
-						if (Symbols.isIn($$iterator, O))
+						if (_Symbol.isIn($$iterator, O))
 							return O;
 
 						if (!('length' in O))

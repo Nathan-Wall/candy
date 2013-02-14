@@ -1,127 +1,71 @@
-function values(map) {
+var is = Object.is,
+	create = Object.create,
+	getPrototypeOf = Object.getPrototypeOf,
+	isPrototypeOf = lazyBind(Object.prototype.isPrototypeOf),
+	ToString = lazyBind(Object.prototype.toString),
+	keys = Object.keys,
+	getOwnPropretyNames = Object.getOwnPropretyNames,
+	_getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor,
+	_defineProperty = Object.defineProperty,
+	isExtensible = Object.isExtensible,
 
-	var ret = { };
+	has = Reflect.has,
+	hasOwn = Reflect.hasOwn,
 
-	Object.keys(map).forEach(function(name) {
+	call = lazyBind(Function.prototype.call),
+	apply = lazyBind(Function.prototype.apply),
 
-		var value = Object.getOwnPropertyDescriptor(staticO, name).value;
+	isArray = Array.isArray,
+	ArraySlice = lazyBind(Array.prototype.slice),
+	concat = lazyBind(Array.prototype.concat),
+	ArrayForEach = lazyBind(Array.prototype.forEach),
+	ArraySome = lazyBind(Array.prototype.some),
+	ArrayEvery = lazyBind(Array.prototype.every),
+	ArrayReduce = lazyBind(Array.prototype.reduce),
+	join = lazyBind(Array.prototype.join),
+	split = lazyBind(Array.prototype.split),
+	push = lazyBind(Array.prototype.push),
+	pop = lazyBind(Array.prototype.pop),
+	shift = lazyBind(Array.prototype.shift),
+	unshift = lazyBind(Array.prototype.unshift),
+	sort = lazyBind(Array.prototype.sort),
+	contains = lazyBind(Array.prototype.contains),
+	reverse = lazyBind(Array.prototype.reverse),
+	ArrayIterator = lazyBind(Array.prototype[$$iterator]),
 
-		if (typeof value != 'undefined')
-			Object.defineProperty(ret, name, {
-				value: value,
-				enumerable: false,
-				writable: true,
-				configurable: true
-			});
+	StringSlice = lazyBind(String.prototype.slice),
+	split = lazyBind(String.prototype.split),
 
-	});
+	random = Math.random,
 
-	return ret;
+	hasSymbol = Symbol.__hasSymbol__,
+	deleteSymbol = Symbol.__deleteSymbol__,
 
-}
+	WeakMapGet = lazyBind(WeakMap.prototype.get),
+	WeakMapSet = lazyBind(WeakMap.prototype.set),
 
-var $contextualized = new Symbol(),
+	// TODO: has might change to contains in upcoming draft
+	SetContains = lazyBind(Set.prototype.has),
+
+	_setTimeout = typeof setTimeout == 'function' ? setTimeout : undefined,
+	_clearTimeout = typeof clearTimeout == 'function' ? clearTimeout : undefined,
+
+	$contextualized = new Symbol(),
 	$lazyBound = new Symbol(),
-	lazyBind = (function() {
-		var slice = Function.prototype.call.bind(Array.prototype.slice);
-		return function lazyBind(/* ...preArgs */) {
+	$consolidated = new Symbol(),
+	$lazySpreed = new Symbol(); // We use "spreed" for past-tense, since there isn't an existing distinguishable term.
 
-			var f = this,
-				preArgs = slice(arguments),
-				lazyBound;
-
-			if (typeof f != 'function')
-				throw new TypeError('lazyBind cannot be called on a non-function: ' + f);
-
-			lazyBound = f[$lazyBound];
-			if (lazyBound) return lazyBound;
-
-			lazyBound = createWrapper.call(this, this.length + 1 - preArgs.length,
-				function lazyBound(context) {
-					return f.apply(context, preArgs.concat(slice(arguments, 1)));
-				}
-			);
-
-			lazyBound[$contextualized] = f;
-			f[$lazyBound] = lazyBound;
-
-			return lazyBound;
-
-		};
-	})();
-
-// Creates a wrapper function with the same length as the original.
-var createWrapper = (function() {
-
-	// Let's memoize wrapper generators to avoid using eval too often.
-	var generators = { },
-
-		numGenerators = 0,
-
-		// Let's limit length to 512 for now. If someone wants to up it, they can.
-		MAX_WRAPPER_LENGTH = 512,
-
-		// Limit the number of generators which are cached to preserve memory in the unusual case that
-		// someone creates many generators. We don't go to lengths to make the cache drop old, unused
-		// values as there really shouldn't be a need for so many generators in the first place.
-		MAX_CACHED_GENERATORS = 64;
-
-	return function createWrapper(/* length, wrapF */$0, $1) {
-
-		var original = this,
-			length = typeof arguments[1] != 'undefined' ? arguments[0] : original.length,
-			wrapF = typeof arguments[1] != 'undefined' ? arguments[1] : arguments[0],
-
-			args = [ ],
-			generator = generators[length];
-
-		if (typeof original != 'function')
-			throw new TypeError('Function expected: ' + original);
-
-		if (length < 0) length = 0;
-		length = length >>> 0;
-		if (length > MAX_WRAPPER_LENGTH)
-			throw new Error('Maximum length allowed is ' + MAX_WRAPPER_LENGTH + ': ' + length);
-
-		if (typeof wrapF != 'function')
-			throw new TypeError('Function expected: ' + wrapF);
-
-		if (!generator) {
-
-			for (var i = 0; i < length; i++)
-				args.push('$' + i);
-
-			generator = eval(
-				'(function(wrapF, original) {'
-					+ 'var wrapper = eval("(function " + original.name + "_(' + args.join(',') + ') {'
-						+ 'return wrapF.apply(this, arguments);'
-					+ '});");'
-					+ 'wrapper.original = original;'
-					+ 'return wrapper;'
-				+ '})'
-			);
-
-			if (numGenerators < MAX_CACHED_GENERATORS) {
-				generators[length] = generator;
-				numGenerators++;
-			}
-
-		}
-
-		return generator(wrapF, original);
-
-	};
-
-})();
+function slice(obj/*, from, to */) {
+	var tag = getTagOf(obj);
+	return apply(tag == 'String' || tag == '~String' ? StringSlice : ArraySlice, arguments);
+}
 
 function methods(builtIn, staticO, instance) {
 
-	var O = Object.create(null),
+	var O = create(null),
+		instanceMethods = create(null);
 
-		instanceMethods = Object.create(null);
-
-	O[$builtIn] = builtIn;
-	Object.defineProperty(O, 'instance', {
+	defineProperty(O, 'instance', {
 
 		value: instanceMethods,
 
@@ -132,21 +76,22 @@ function methods(builtIn, staticO, instance) {
 	});
 
 	// Lazy Bind builtIn.prototype methods and instance methods
-	[ builtIn && builtIn.prototype, instance ].forEach(function(obj) {
+	forEach([ builtIn && builtIn.prototype, instance ], function(obj) {
 
 		if (!obj) return;
 
-		Object.getOwnPropertyNames(obj).forEach(function(name) {
+		forEach(getOwnPropertyNames(obj), function(name) {
 
 			if (name == 'constructor') return;
 
-			var method = Object.getOwnPropertyDescriptor(obj, name).value;
+			var desc = getOwnPropertyDescriptor(obj, name),
+				method = desc && desc.value;
 
 			if (typeof method == 'function') {
 
-				Object.defineProperty(O, name, {
+				defineProperty(O, name, {
 
-					value: lazyBind.call(method),
+					value: lazyBind(method),
 
 					enumerable: false,
 					writable: true,
@@ -154,7 +99,7 @@ function methods(builtIn, staticO, instance) {
 
 				});
 
-				Object.defineProperty(instanceMethods, name, {
+				defineProperty(instanceMethods, name, {
 
  					value: method,
 
@@ -171,14 +116,15 @@ function methods(builtIn, staticO, instance) {
 	});
 
 	if (staticO != null)
-		Object.keys(staticO).forEach(function(name) {
+		forEach(keys(staticO), function(name) {
 
 			if (name == 'constructor') return;
 
-			var method = Object.getOwnPropertyDescriptor(staticO, name).value;
+			var desc = getOwnPropertyDescriptor(staticO, name)
+				method = desc && desc.value;
 
 			if (typeof method == 'function')
-				Object.defineProperty(O, name, {
+				defineProperty(O, name, {
 
 					value: method,
 
@@ -192,10 +138,4 @@ function methods(builtIn, staticO, instance) {
 
 	return O;
 
-}
-
-function isSameValue(a, b) {
-	// egal function. Exposes ES5 SameValue function.
-	return a === b && (a !== 0 || 1 / a === 1 / b) // false for +0 vs -0
-		|| a !== a && b !== b; // true for NaN vs NaN
 }

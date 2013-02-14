@@ -1,56 +1,164 @@
-var candy = (function() {
+!!!standAlone((function() {
+	var _Harmonize_forceShim = true;
+	!!!include('../Harmonize/Harmonize.jsx');
+})());
 
-	var _inHarmony_forceShim = true;
+// Let's check to see if we have what appears to be a complete ES6 environment, along with
+// access to $$iterator.
+// TODO: Once ES6 environments appear that support @@iterator, check for the built-one as well.
+if (typeof WeakMap != 'function'
+	|| typeof Map != 'function'
+	|| typeof Set != 'function'
+	|| typeof $$iterator == 'undefined'
+	|| !WeakMap.prototype
+	|| !Map.prototype
+	|| !Set.prototype
+	|| typeof Map.prototype.get != 'function'
+	|| typeof Map.prototype.set != 'function'
+	|| typeof Set.prototype.has != 'function' // TODO: rename contains when ES6 draft matches
+	|| typeof Object.is != 'function'
+	|| typeof Reflect.has != 'function' // TODO: We expect Reflect to need to be imported as a module, but how this will work out is yet unknown.
+	|| typeof Reflect.hasOwn != 'function')
+	throw new Error('ES6 environment missing or incomplete. Harmonize.js (or compatible shim) is required to use candy.js.');
 
-	!!!includes('inHarmony', 'bootstrap.jsx', 'Functions.jsx', 'Objects.jsx');
+var candy = (function(Object, Array, Function, String, Number, TypeError, RangeError, Error, WeakMap, Map, Set, Reflect, $$iterator) {
 
-	var $builtIn = new Symbol();
+	'use strict';
 
-	var modules = {
-			Arrays: Arrays,
-			Functions: Functions,
-			Iterables: Iterables,
-			Map: Map,
-			Numbers: Numbers,
-			Objects: Objects,
-			Sets: Sets,
-			Symbols: Symbols,
-			WeakMap: WeakMap
-		},
+	!!!includes('bootstrap.jsx', 'Iterable.jsx');
+
+	var modules = (function() {
+			var _modules = [
+					{
+						name: 'Object',
+						module: _Object,
+							 // name: built-in
+						coat: { Object: Object }
+					},
+					{
+						name: 'Iterable',
+						module: Iterable,
+						coat: {
+							Array: Array,
+							Map: Map,
+							Set: Set
+							// ? String: String
+						}
+					},
+					{
+						name: 'Array',
+						module: _Array,
+						coat: { Array: Array }
+					},
+					{
+						name: 'Function',
+						module: _Function,
+						coat: { Function: Function }
+					},
+					{
+						name: 'Map',
+						module: _Map,
+						coat: { Map: Map }
+					},
+					{
+						name: 'Number',
+						module: _Number,
+						coat: { Number: Number }
+					},
+					{
+						name: 'Set',
+						module: _Set,
+						coat: { Set: Set }
+					},
+					{
+						name: 'Symbol',
+						module: _Symbol,
+						coat: { Symbol: Symbol }
+					},
+					{
+						name: 'WeakMap',
+						module: _WeakMap,
+						coat: { WeakMap: WeakMap }
+					},
+					{
+						name: 'Reflect',
+						module: _Reflect,
+						coat: { Reflect: Reflect }
+					}
+				];
+			return map(_modules,
+				function(def) {
+					var name = def.name,
+						ret = create(null);
+					ret.name = name;
+					ret.module = def.module;
+					// TODO: all and any functions
+					ret.test = preload(all, map(keys(def.coat),
+						function(name) { return postload(isLike, name); }));
+					ret.builtIns = map(keys(def.coat),
+						function(name) { return def.coat[name]; });
+					return ret;
+				}
+			);
+		})(),
 
 		candy = {
 
 			$reconstructor: $reconstructor,
 
+			// We use a generic slice which can distinguish between strings and array-like objects.
+			slice: slice,
+
 			coat: (function () {
 
-				var $extended = new Symbol(),
-	// TODO: Iterables?
-					coatings = {
-						'Object': [ Objects ],
-						'Array': [ Objects, Arrays ],
-						'Function': [ Objects, Functions ],
-						'Number': [ Objects, Numbers ],
-						'Set': [ Objects, Sets ],
-						'Symbol': [ Objects, Symbols ]
-					};
+				var $coated = new Symbol();
 
-				return function extend(obj/*, override */) {
+				return function coat(obj/*, override, module */) {
 
-					if (Object(obj) != obj)
-						throw new TypeError('Cannot coat a non-object: ' + obj);
+					if (obj == null)
+						throw new TypeError('Cannot coat null or undefined');
 
-					var override = !!arguments[1];
+					var O = Object(obj),
+						override = !!arguments[1],
+						module = arguments[2];
+						M = M !== undefined ? String(M) : undefined;
 
-					if (obj[$extended])
+					if (!override && O[$coated])
 						return;
 
-					if (!Object.isExtensible(obj))
+					if (!isExtensible(O))
 						throw new Error('Object is not extensible.');
 
-					obj[$extended] = true;
+					O[$coated] = true;
 
+					var error;
 
+					forEach(modules, function(info) {
+						var name = info.name,
+							module = info.module,
+							test = info.test;
+						if (M === name || test(O))
+							forEach(getOwnPropertyNames(module.instance), function(name) {
+
+								var oDesc = getPropertyDescriptor(O, name);
+
+								if (override && !oDesc.configurable) {
+									if (!error)
+										error = new Error('Property is not configurable: ' + name);
+									return;
+								}
+
+								if (!oDesc || override && oDesc.configurable)
+									defineProperty(O, name,
+										getOwnPropertyDescriptor(module.instance, name));
+
+							});
+					});
+
+					if (error)
+						throw error;
+
+					return O;
 
 				};
 
@@ -58,41 +166,69 @@ var candy = (function() {
 
 			coatBuiltIns: (function() {
 
-				var extended = false,
+				var coated = false;
 
-				// TODO: Iterables?
-					extensions = [
-						Arrays, Functions, Numbers, Objects, Sets, Symbols
-					];
-
-				return function extendBuiltIns(/* override */) {
-
-					if (extended)
-						return;
-
-					extended = true;
+				return function coatBuiltIns(/* override */) {
 
 					var override = !!arguments[0];
 
-					extensions.forEach(function(extension) {
+					if (!override && coated)
+						return;
 
-						var builtIn = extension[$builtIn];
+					coated = true;
 
-						Object.getOwnPropertyNames(extension).forEach(function(name) {
-							// TODO: Check for non-configurable existing properties before trying to override
-							if (name != 'instance' && (override || !(name in builtIn)))
-								Object.defineProperty(builtIn,
-									Object.getOwnPropertyDescriptor(extension, name));
+					forEach(modules, function(info) {
 
-						});
+						var name = info.name,
+							module = info.module,
+							builtIns = info.builtIns,
+							error;
 
-						Object.getOwnPropertyNames(extension.instance).forEach(function(name) {
-							// TODO: Check for non-configurable existing properties before trying to override
-							if (override || !(name in builtIn.prototype))
-								Object.defineProperty(builtIn.prototype,
-									Object.getOwnPropertyDescriptor(extension.instance, name));
+						forEach(
+							[
+								{ with: module, what: builtIns },
+								{ with: module.instance, what: map(builtIns, function(builtIn) { return builtIn.prototype; } })
+							],
+							function(info) {
 
-						});
+								var coatWith = info.with,
+									coatWhat = info.what;
+
+								getOwnPropertyNames(coatWith).forEach(function(name) {
+									
+									forEach(coatWhat, function(what) {
+
+										if (!isExtensible(what)) {
+											if (!error)
+												error = new Error('Built-in is not extensible.');
+											return;
+										}
+
+										if (name == 'instance')
+											return;
+
+										var bDesc = getPropertyDescriptor(what, name);
+
+										if (override && !bDesc.configurable) {
+											if (!error)
+												error = new Error('Property is not configurable: ' + name);
+											return;
+										}
+
+										if (!bDesc || override)
+											defineProperty(what, name,
+												getOwnPropertyDescriptor(coatWith, name));
+
+									});
+
+								});
+
+
+							}
+						);
+	
+						if (error)
+							throw error;
 
 					});
 
@@ -102,15 +238,16 @@ var candy = (function() {
 
 		};
 
-	Object.keys(modules).forEach(function(name) {
-		var module = candy[name] = modules[name];
-		Object.getOwnPropertyNames(module).forEach(function(prop) {
-			var method = module[method];
-			if (!candy.hasOwnProperty(prop) && typeof method == 'function')
-				candy[prop] = method;
+	forEach(modules, function(info) {
+		var name = info.name,
+			module = candy[name] = info.module;
+		forEach(getOwnPropertyNames(module), function(name) {
+			var desc = getOwnPropertyDescriptor(module, name);
+			if (!hasOwn(candy, name))
+				defineProperty(candy, name, desc);
 		});
 	});
 
 	return candy;
 
-})();
+})(Object, Array, Function, String, Number, TypeError, RangeError, Error, WeakMap, Map, Set, Reflect, $$iterator);
