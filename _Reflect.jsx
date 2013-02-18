@@ -8,14 +8,15 @@ function isTagged(obj, tag) {
 
 function isLike(obj, tag) {
 	var proto,
-		objTag = getTagOf(obj).replace(/^~+/, '');
-	tag = tag.replace(/^~+/, '');
-	return tag == objTag
+		O = Object(obj),
+		objTag = replace(getTagOf(O), /^~+/, '');
+	tag = replace(tag, /^~+/, '');
+	return !!(tag == objTag
 		// We say that an arguments object is like an array.
 		|| tag == 'Array' && objTag == 'Arguments'
-		|| (Object(obj) === obj
+		|| (O === obj
 			&& (proto = getPrototypeOf(obj))
-			&& isTagged(proto, tag));
+			&& isTagged(proto, tag)));
 }
 
 function getTypeOf(obj) {
@@ -39,20 +40,23 @@ function getTypeOf(obj) {
 }
 
 function getTagOf(obj) {
-	// TODO: Make functions like StringSlice available and secure candy code.
-	return StringSlice(ToString(obj, 8, -1));
+	return StringSlice(ToString(obj), 8, -1);
 }
 
 function own(obj) {
 
-	var O = create(null);
+	if (obj == null)
+		return obj;
 
-	forEach(getOwnPropertyNames(obj), function(key) {
-		defineProperty(O, key,
-			getOwnPropertyDescriptor(obj, key));
+	var O = Object(obj),
+		ret = create(null);
+
+	_forEach(getOwnPropertyNames(O), function(key) {
+		_defineProperty(ret, key,
+			_getOwnPropertyDescriptor(O, key));
 	});
 
-	return O;
+	return ret;
 
 }
 
@@ -77,8 +81,8 @@ function _concatUncommonNames(from, compareWith) {
 
 // We want to make sure that only own properties of the descriptor are returned,
 // so that we can't be tricked.
-function getOwnPropertyDescriptor(obj) {
-	return own(_getOwnPropertyDescriptor(obj));
+function getOwnPropertyDescriptor(obj, name) {
+	return own(_getOwnPropertyDescriptor(obj, name));
 }
 
 function getPropertyDescriptor(obj, name) {
@@ -93,9 +97,8 @@ function getPropertyDescriptor(obj, name) {
 
 function _items(obj) {
 	var items = [ ];
-	forEach(keys(obj), function(key) {
-			push(items, [ key, obj[key] ]);
-		});
+	for (var key in obj)
+		push(items, [ key, obj[key] ]);
 	return items;
 }
 

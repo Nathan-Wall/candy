@@ -13,7 +13,6 @@ function mixin(what/*, ...withs */) {
 
 		withO = Object(arguments[i]);
 
-		// TODO: Where is getUncommonPropertyNames defined?
 		forEach(getUncommonPropertyNames(withO, what), function(name) {
 
 			var whatDesc = getPropertyDescriptor(what, name),
@@ -61,7 +60,7 @@ var _Object = (function() {
 		// Instance methods
 		{
 
-			define: defineProperty,
+			define: contextualize(defineProperty),
 
 			mixin: contextualize(mixin),
 			copy: contextualize(copy),

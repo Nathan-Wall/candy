@@ -79,7 +79,7 @@ function unite(a, b) {
 
 // Although this method is intended for Sets and difficult to generalize, technically it only
 // requires that the objects be iterable.
-function substract(a, b) {
+function subtract(a, b) {
 
 	if (a == null || b == null)
 		throw new TypeError('unite cannot be called on null or undefined.');
@@ -136,7 +136,7 @@ var _Set = methods(
 		intersect: contextualize(intersect),
 		unite: contextualize(unite),
 		subtract: contextualize(subtract),
-		isSubsetOf: contextualize(isSubsetof)
+		isSubsetOf: contextualize(isSubsetOf)
 	}
 
 );

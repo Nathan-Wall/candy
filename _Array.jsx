@@ -1,9 +1,14 @@
 function isArrayLike(obj) {
  	// This tests for a class of Array-like objects.
- 	// An Array-like object is an object with a length property which isn't a string.
+ 	// An Array-like object is an object with a length property which isn't a string or a function.
  	var tag = getTagOf(obj);
  	return tag == 'Array' || tag == '~Array'
- 		|| obj != null && 'length' in obj && tag != 'String' && tag != '~String';
+ 		|| Object(obj) === obj
+ 			&& 'length' in obj
+ 			&& tag != 'String'
+ 			&& tag != '~String'
+ 			&& tag != 'Function'
+ 			&& tag != '~Function';
 }
 
 function ArrayEquals(a, b) {
@@ -15,12 +20,12 @@ function ArrayEquals(a, b) {
 
 function merge(a/*, ...b */) {
 	// Similar to concat, but it can merge array-like objects, and it won't concat plain values.
-	return reduce(slice(arguments, 1), function(prev, cur) {
+	return ArrayReduce(ArraySlice(arguments, 1), function(prev, cur) {
 		return concat(prev, ArraySlice(cur));
 	}, ArraySlice(a));
 }
 
-function persuade(/* [from], [to], types */) {
+function persuade(array/*, [from], [to], types */) {
 	/* array can be a array of strings, constructors, and/or param objects.
 	 * type can be any string which matches a typeof result or any of the extended types.
 	 * multiple types for a single argument can be separated by a "|".
@@ -35,7 +40,7 @@ function persuade(/* [from], [to], types */) {
 	if (typeof arguments[argNum] == 'number') to = arguments[argNum++];
 	types = ArraySlice(arguments[argNum]);
 
-	A = ArraySlice(this, from, to);
+	A = ArraySlice(array, from, to);
 
 	curItem = shift(A);
 
@@ -114,12 +119,12 @@ function toTruthTable(array) {
 	return obj;
 }
 
-function search(value) {
+function search(array, value) {
 	// Similar to indexOf, but matches with egal when needed to keep with ES5 SameValue function.
 	var index = -1;
 	if (v !== v || v === 0) {
 		// Use egal to test NaN and +0/-0 to keep with ES5 SameValue function.
-		some(this, function(u, i) {
+		some(array, function(u, i) {
 			if (is(u, v)) {
 				index = i;
 				return true;
@@ -128,27 +133,34 @@ function search(value) {
 		return index;
 	} else {
 		// Use indexOf when possible, for speed.
-		return indexOf(this, value);
+		return indexOf(array, value);
 	}
 }
 
 // Provides a stable sort, which doesn't alter the original array.
 // Note: This function initializes itself the first time it is called.
 function stableSort() {
-	var nativeIsStable = (function() {
+	// Let's use built-in methods directly here for performance.
+	var lazyBind = Function.prototype.bind.bind(Function.prototype.call),
+		R = Array.prototype,
+		_map = lazyBind(R.map),
+		_every = lazyBind(R.every),
+		_sort = lazyBind(R.sort),
+		_ArrayFrom = Array.from,
+		nativeIsStable = (function() {
 			return testStability(32, 2) && testStability(512, 16);
 			function testStability(size, resolution) {
 				var res = createRange(resolution),
-					r = map(createRange(size), function(u) {
+					r = _map(createRange(size), function(u) {
 						return mixin(map(res, function() {
 							return random() > .5 ? 0 : 1;
 						}), { i: u });
 					});
-				return res.every(function(i) {
-					sort(r, function(a, b) {
+				return _every(res, function(i) {
+					_sort(r, function(a, b) {
 						return a[i] - b[i];
 					});
-					return every(r, function(u, j) {
+					return _every(r, function(u, j) {
 						var next = r[j + 1];
 						if (!next) return true;
 						for (var k = 0; k <= i; k++) {
@@ -162,10 +174,11 @@ function stableSort() {
 		algorithm = nativeIsStable
 			? lazyBind(Array.prototype.sort)
 			: function stableSort(array, f) {
-				return map(
-						sort(map(array, function(u, i) { return { value: u, index: i }; }),
+				var sorted = _map(
+						_sort(_ArrayFrom(array, function(u, i) { return { value: u, index: i }; }),
 							function(a, b) { return (f ? f(a.value, b.value) : a.value - b.value) || a.index - b.index; }),
 						function(u) { return u.value; });
+				return CallConstruct(array, sorted);
 			};
 	stableSort = algorithm;
 	return apply(algorithm, this, arguments);
@@ -181,7 +194,7 @@ stableSort([ 1, 2, 3 ]);
 
 // Same as Array#map, but any time the callback returns undefined, it is filtered from the result array.
 function mapPartial(array, f) {
-	return without(map(array, f), undefined);
+	return CallConstruct(array, without(ArrayFrom(array, f), undefined));
 }
 
 function without(array/*, ...values */) {
@@ -193,23 +206,15 @@ function without(array/*, ...values */) {
 		});
 }
 
-function all(array/*, ...arguments */) {
-	var args = ArraySlice(arguments, 1),
-		context = this;
+function all(array) {
 	return every(array, function(u) {
-		if (typeof u == 'function')
-			return apply(u, context, args);
-		else return !!u;
+		return !!u;
 	});
 }
 
-function any(array/*, ...arguments */) {
-	var args = ArraySlice(arguments, 1),
-		context = this;
+function any(array) {
 	return some(array, function(u) {
-		if (typeof u == 'function')
-			return apply(u, context, args);
-		else return !!u;
+		return !!u;
 	});
 }
 
@@ -223,6 +228,7 @@ var _Array = (function() {
 
 		// Instance methods
 		{
+			isArrayLike: contextualize(isArrayLike),
 			equals: contextualize(ArrayEquals),
 			merge: contextualize(merge),
 			persuade: contextualize(persuade),

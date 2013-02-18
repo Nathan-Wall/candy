@@ -24,10 +24,10 @@ function createWrapper(f/*, length = f.length */, wrapF) {
 
 	var original = f,
 		length = arguments[2] !== undefined ? arguments[1] : original.length,
-		wrapF = arguments[2] !== undefined ? arguments[2] : arguments[1],
-
 		args = [ ],
-		generator = wrapGenerators[length];
+		generator = wrapGenerators && wrapGenerators[length];
+	
+	wrapF = arguments[2] !== undefined ? arguments[2] : arguments[1];
 
 	if (typeof original != 'function')
 		throw new TypeError('Function expected: ' + original);
@@ -47,17 +47,20 @@ function createWrapper(f/*, length = f.length */, wrapF) {
 	if (!generator) {
 
 		for (var i = 0; i < length; i++)
-			push(args, '$' + i);
+			_push(args, '$' + i);
 
-		generator = eval(
-			'(function(wrapF, original) {'
-				+ 'var wrapper = eval("(function " + original.name + "_(' + join(args, ',') + ') {'
-					+ 'return apply(wrapF, this, arguments);'
-				+ '});");'
-				+ 'wrapper.original = original;'
-				+ 'return wrapper;'
-			+ '})'
-		);
+			generator = _eval(
+				'(function(wrapF, original, name, apply, _eval) {'
+					+ '"use strict";'
+					+ 'var wrapper = _eval("(function(wrapF, original, name, apply) {'
+						+ 'return (function " + name + "_(' + _join(args, ',') + ') {'
+							+ 'return apply(wrapF, this, arguments);'
+						+ '});'
+					+ '})");'
+					+ 'wrapper.original = original;'
+					+ 'return wrapper(wrapF, original, name, apply);'
+				+ '})'
+			);
 
 		if (numWrapGenerators < MAX_CACHED_GENERATORS) {
 			wrapGenerators[length] = generator;
@@ -66,7 +69,7 @@ function createWrapper(f/*, length = f.length */, wrapF) {
 
 	}
 
-	return generator(wrapF, original);
+	return generator(wrapF, original, _replace(original.name, /\W/g, '_'), _apply, _eval);
 
 }
 
@@ -158,23 +161,23 @@ var defer = (function() {
 
 function lazyBind(f/*, ...preArgs */) {
 
-	var preArgs = slice(arguments, 1),
+	var preArgs = _ArraySlice(arguments, 1),
 		lazyBound;
 
 	if (typeof f != 'function')
 		throw new TypeError('lazyBind cannot be called on a non-function: ' + f);
 
-	lazyBound = f[$lazyBound];
+	lazyBound = $Function(f).lazyBound;
 	if (lazyBound) return lazyBound;
 
 	lazyBound = createWrapper(f, f.length + 1 - preArgs.length,
 		function lazyBound(context) {
-			return apply(f, context, concat(preArgs, slice(arguments, 1)));
+			return _apply(f, context, _concat(preArgs, _ArraySlice(arguments, 1)));
 		}
 	);
 
-	lazyBound[$contextualized] = f;
-	f[$lazyBound] = lazyBound;
+	$Function(lazyBound).contextualized = f;
+	$Function(f).lazyBound = lazyBound;
 
 	return lazyBound;
 
@@ -189,7 +192,7 @@ function contextualize(f/*, ...preArgs */) {
 	if (typeof f != 'function')
 		throw new TypeError('Function expected: ' + f);
 
-	contextualized = f[$contextualized];
+	contextualized = $Function(f).contextualized;
 	if (contextualized) return contextualized;
 
 	var F = lazySpread(f),
@@ -201,8 +204,8 @@ function contextualize(f/*, ...preArgs */) {
 		}
 	);
 
-	contextualized[$lazyBound] = f;
-	f[$contextualized] = contextualized;
+	$Function(contextualized).lazyBound = f;
+	$Function(f).contextualized = contextualized;
 
 	return contextualized;
 
@@ -240,8 +243,8 @@ function lazySpread(f/*, preArgs */) {
 
 	});
 
-	lazySpreed[$consolidated] = f;
-	f[$lazySpreed] = lazySpreed;
+	$Function(lazySpreed).consolidated = f;
+	$Function(f).lazySpreed = lazySpreed;
 
 	return lazySpreed;
 
@@ -291,7 +294,7 @@ function invert(f/*, length */) {
 function preload(f/*, ...args */) {
 	// Similar to bind, but doesn't accept a context.
 
-	var preArgs = arguments;
+	var preArgs = ArraySlice(arguments, 1);
 
 	if (typeof f != 'function')
 		throw new TypeError('preload cannot be called on a non-function: ' + f);
@@ -317,7 +320,7 @@ function postload(f/*, ...args */) {
 	var L = f.length - postArgs.length;
 	if (L < 0) L = 0;
 
-	return Functions.createWrapper(f, L, function postloadedFunction() {
+	return createWrapper(f, L, function postloadedFunction() {
 		return apply(f, this, merge(arguments, postArgs));
 	});
 
@@ -332,7 +335,7 @@ function load(f/*, ...args */) {
 	if (typeof f != 'function')
 		throw new TypeError('load cannot be called on a non-function: ' + f);
 
-	return Functions.createWrapper(f, 0, function loadedFunction() {
+	return createWrapper(f, 0, function loadedFunction() {
 		return apply(f, this, args);
 	});
 

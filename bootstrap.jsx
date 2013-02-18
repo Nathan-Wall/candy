@@ -1,10 +1,25 @@
-var is = Object.is,
+var $Candy = createSecret(),
+	$Function = createSecret(),
+	$Iterable = createSecret(),
+
+	_eval = eval, // `eval` is reserved in strict mode.
+
+	// The following are for internal use. They're needed to get lazyBind off the ground.
+	_apply = Function.prototype.call.bind(Function.prototype.apply),
+	_ArraySlice = Function.prototype.call.bind(Array.prototype.slice),
+	_concat = Function.prototype.call.bind(Array.prototype.concat),
+	_push = Function.prototype.call.bind(Array.prototype.push),
+	_join = Function.prototype.call.bind(Array.prototype.join),
+	_replace = Function.prototype.call.bind(String.prototype.replace),
+	_forEach = Function.prototype.call.bind(Array.prototype.forEach),
+
+	is = Object.is,
 	create = Object.create,
 	getPrototypeOf = Object.getPrototypeOf,
 	isPrototypeOf = lazyBind(Object.prototype.isPrototypeOf),
 	ToString = lazyBind(Object.prototype.toString),
 	keys = Object.keys,
-	getOwnPropretyNames = Object.getOwnPropretyNames,
+	getOwnPropertyNames = Object.getOwnPropertyNames,
 	_getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor,
 	_defineProperty = Object.defineProperty,
 	isExtensible = Object.isExtensible,
@@ -23,7 +38,6 @@ var is = Object.is,
 	ArrayEvery = lazyBind(Array.prototype.every),
 	ArrayReduce = lazyBind(Array.prototype.reduce),
 	join = lazyBind(Array.prototype.join),
-	split = lazyBind(Array.prototype.split),
 	push = lazyBind(Array.prototype.push),
 	pop = lazyBind(Array.prototype.pop),
 	shift = lazyBind(Array.prototype.shift),
@@ -31,15 +45,13 @@ var is = Object.is,
 	sort = lazyBind(Array.prototype.sort),
 	contains = lazyBind(Array.prototype.contains),
 	reverse = lazyBind(Array.prototype.reverse),
-	ArrayIterator = lazyBind(Array.prototype[$$iterator]),
+	ArrayIterator = lazyBind($$(Array.prototype, 'iterator')),
 
 	StringSlice = lazyBind(String.prototype.slice),
 	split = lazyBind(String.prototype.split),
+	replace = lazyBind(String.prototype.replace),
 
 	random = Math.random,
-
-	hasSymbol = Symbol.__hasSymbol__,
-	deleteSymbol = Symbol.__deleteSymbol__,
 
 	WeakMapGet = lazyBind(WeakMap.prototype.get),
 	WeakMapSet = lazyBind(WeakMap.prototype.set),
@@ -48,16 +60,11 @@ var is = Object.is,
 	SetContains = lazyBind(Set.prototype.has),
 
 	_setTimeout = typeof setTimeout == 'function' ? setTimeout : undefined,
-	_clearTimeout = typeof clearTimeout == 'function' ? clearTimeout : undefined,
-
-	$contextualized = new Symbol(),
-	$lazyBound = new Symbol(),
-	$consolidated = new Symbol(),
-	$lazySpreed = new Symbol(); // We use "spreed" for past-tense, since there isn't an existing distinguishable term.
+	_clearTimeout = typeof clearTimeout == 'function' ? clearTimeout : undefined;
 
 function slice(obj/*, from, to */) {
 	var tag = getTagOf(obj);
-	return apply(tag == 'String' || tag == '~String' ? StringSlice : ArraySlice, arguments);
+	return apply(tag == 'String' || tag == '~String' ? StringSlice : ArraySlice, null, arguments);
 }
 
 function methods(builtIn, staticO, instance) {
@@ -120,7 +127,7 @@ function methods(builtIn, staticO, instance) {
 
 			if (name == 'constructor') return;
 
-			var desc = getOwnPropertyDescriptor(staticO, name)
+			var desc = getOwnPropertyDescriptor(staticO, name),
 				method = desc && desc.value;
 
 			if (typeof method == 'function')
@@ -138,4 +145,15 @@ function methods(builtIn, staticO, instance) {
 
 	return O;
 
+}
+
+function CallConstruct(withObj, onObj) {
+	var construct = withObj.construct || $Candy(withObj).construct,
+		constructed;
+	if (typeof construct == 'function') {
+		constructed = call(construct, onObj);
+		if (constructed != null && typeof constructed == 'object')
+			onObj = constructed;
+	}
+	return onObj;
 }

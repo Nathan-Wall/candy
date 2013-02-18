@@ -1,1 +1,0 @@
-var $reconstructor = new Symbol();

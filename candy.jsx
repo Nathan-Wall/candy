@@ -1,29 +1,31 @@
-!!!standAlone((function() {
-	var _Harmonize_forceShim = true;
-	!!!include('../Harmonize/Harmonize.jsx');
-})());
-
-// Let's check to see if we have what appears to be a complete ES6 environment, along with
-// access to $$iterator.
-// TODO: Once ES6 environments appear that support @@iterator, check for the built-one as well.
-if (typeof WeakMap != 'function'
-	|| typeof Map != 'function'
-	|| typeof Set != 'function'
-	|| typeof $$iterator == 'undefined'
-	|| !WeakMap.prototype
-	|| !Map.prototype
-	|| !Set.prototype
-	|| typeof Map.prototype.get != 'function'
-	|| typeof Map.prototype.set != 'function'
-	|| typeof Set.prototype.has != 'function' // TODO: rename contains when ES6 draft matches
-	|| typeof Object.is != 'function'
-	|| typeof Reflect.has != 'function' // TODO: We expect Reflect to need to be imported as a module, but how this will work out is yet unknown.
-	|| typeof Reflect.hasOwn != 'function')
-	throw new Error('ES6 environment missing or incomplete. Harmonize.js (or compatible shim) is required to use candy.js.');
-
-var candy = (function(Object, Array, Function, String, Number, TypeError, RangeError, Error, WeakMap, Map, Set, Reflect, $$iterator) {
+// Note: Anything that includes candy with !!!include() **must** provide $$ from Harmonize.
+var candy = (function(SecretExports, Object, Array, Function, String, Number, TypeError, RangeError, Error, WeakMap, Map, Set, Reflect) {
 
 	'use strict';
+
+	var createSecret = SecretExports.createSecret,
+		$$ = SecretExports.$$,
+
+		// Override any `module` or `exports` variables which exist outside of this
+		// scope; otherwise, some includes will try to mix into them.
+		module = null, exports = null;
+
+	// Let's check to see if we have what appears to be a complete ES6 environment, along with $$.
+	// TODO: Once ES6 environments appear that support @@iterator, check for the built-one as well.
+	if (typeof WeakMap != 'function'
+		|| typeof Map != 'function'
+		|| typeof Set != 'function'
+		|| typeof $$ != 'function'
+		|| !WeakMap.prototype
+		|| !Map.prototype
+		|| !Set.prototype
+		|| typeof Map.prototype.get != 'function'
+		|| typeof Map.prototype.set != 'function'
+		|| typeof Set.prototype.has != 'function' // TODO: rename contains when ES6 draft matches
+		|| typeof Object.is != 'function'
+		|| typeof Reflect.has != 'function' // TODO: We expect Reflect to need to be imported as a module, but how this will work out is yet unknown.
+		|| typeof Reflect.hasOwn != 'function')
+		throw new Error('ES6 environment missing or incomplete. Harmonize.js (or compatible shim) is required to use candy.js.');
 
 	!!!includes('bootstrap.jsx', 'Iterable.jsx');
 
@@ -55,11 +57,11 @@ var candy = (function(Object, Array, Function, String, Number, TypeError, RangeE
 						module: _Function,
 						coat: { Function: Function }
 					},
-					{
-						name: 'Map',
-						module: _Map,
-						coat: { Map: Map }
-					},
+					// {
+					// 	name: 'Map',
+					// 	module: _Map,
+					// 	coat: { Map: Map }
+					// },
 					{
 						name: 'Number',
 						module: _Number,
@@ -70,16 +72,11 @@ var candy = (function(Object, Array, Function, String, Number, TypeError, RangeE
 						module: _Set,
 						coat: { Set: Set }
 					},
-					{
-						name: 'Symbol',
-						module: _Symbol,
-						coat: { Symbol: Symbol }
-					},
-					{
-						name: 'WeakMap',
-						module: _WeakMap,
-						coat: { WeakMap: WeakMap }
-					},
+					// {
+					// 	name: 'WeakMap',
+					// 	module: _WeakMap,
+					// 	coat: { WeakMap: WeakMap }
+					// },
 					{
 						name: 'Reflect',
 						module: _Reflect,
@@ -104,14 +101,12 @@ var candy = (function(Object, Array, Function, String, Number, TypeError, RangeE
 
 		candy = {
 
-			$reconstructor: $reconstructor,
+			$$: $$,
 
 			// We use a generic slice which can distinguish between strings and array-like objects.
 			slice: slice,
 
 			coat: (function () {
-
-				var $coated = new Symbol();
 
 				return function coat(obj/*, override, module */) {
 
@@ -123,13 +118,13 @@ var candy = (function(Object, Array, Function, String, Number, TypeError, RangeE
 						module = arguments[2];
 						M = M !== undefined ? String(M) : undefined;
 
-					if (!override && O[$coated])
+					if (!override && $Candy(O).coated)
 						return;
 
 					if (!isExtensible(O))
 						throw new Error('Object is not extensible.');
 
-					O[$coated] = true;
+					$Candy(O).coated = true;
 
 					var error;
 
@@ -187,7 +182,7 @@ var candy = (function(Object, Array, Function, String, Number, TypeError, RangeE
 						forEach(
 							[
 								{ with: module, what: builtIns },
-								{ with: module.instance, what: map(builtIns, function(builtIn) { return builtIn.prototype; } })
+								{ with: module.instance, what: map(builtIns, function(builtIn) { return builtIn.prototype; }) }
 							],
 							function(info) {
 
@@ -250,4 +245,20 @@ var candy = (function(Object, Array, Function, String, Number, TypeError, RangeE
 
 	return candy;
 
-})(Object, Array, Function, String, Number, TypeError, RangeError, Error, WeakMap, Map, Set, Reflect, $$iterator);
+})(
+	(function() {
+		var exports = Object.create(null);
+		!!!standAlone(!!!include('../Secrets/Secrets.js'));
+		!!!standAlone(!!!include('../Harmonize/Harmonize.jsx'));
+		return {
+			createSecret: createSecret,
+			$$: exports.$$ || (typeof $$ != 'undefined' ? $$ : undefined)
+		};
+	})(),
+	Object, Array, Function, String, Number, TypeError, RangeError, Error, WeakMap, Map, Set, Reflect
+);
+
+// exports
+if (typeof module == 'object' && module != null
+	&& typeof module.exports == 'object' && module.exports != null)
+	module.exports = candy;
