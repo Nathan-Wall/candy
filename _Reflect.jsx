@@ -43,18 +43,17 @@ function getTagOf(obj) {
 	return StringSlice(ToString(obj), 8, -1);
 }
 
+// TODO: Rename `dict`? Is this identical to ES6 `dict`?
 function own(obj) {
 
-	if (obj == null)
-		return obj;
-
 	var O = Object(obj),
-		ret = create(null);
+		ret = create(null),
+		names = getOwnPropertyNames(O);
 
-	_forEach(getOwnPropertyNames(O), function(key) {
-		_defineProperty(ret, key,
-			_getOwnPropertyDescriptor(O, key));
-	});
+	// TODO: Will setting properties on Object.prototype break this? Since you could set a
+	// `get` property on the prototype, making a `get` property on a DataProperty...
+	for (var i = 0, name = names[0]; name = names[i], i < names.length; i++)
+		defineProperty(ret, name, _getOwnPropertyDescriptor(O, name));
 
 	return ret;
 
@@ -64,7 +63,7 @@ function getUncommonPropertyNames(from, compareWith) {
 	if (Object(from) !== from || Object(compareWith) !== compareWith)
 		throw new TypeError('getUncommonPropertyNames called on non-object.');
 	var namesMap = create(null);
-	return filter(_concatUncommonNames(from, compareWith),
+	return _filter(_concatUncommonNames(from, compareWith),
 		function(u) {
 			if (namesMap[u]) return false;
 			return namesMap[u] = true;
@@ -81,8 +80,9 @@ function _concatUncommonNames(from, compareWith) {
 
 // We want to make sure that only own properties of the descriptor are returned,
 // so that we can't be tricked.
+// TODO: Rename to indicate that this is slightly different from `Object.getOwnPropertyDescriptor`.
 function getOwnPropertyDescriptor(obj, name) {
-	return own(_getOwnPropertyDescriptor(obj, name));
+	return safeDescriptor(_getOwnPropertyDescriptor(obj, name));
 }
 
 function getPropertyDescriptor(obj, name) {
@@ -96,18 +96,20 @@ function getPropertyDescriptor(obj, name) {
 }
 
 function _items(obj) {
-	var items = [ ];
+	var items = create(null);
+	items.length = 0;
 	for (var key in obj)
 		push(items, [ key, obj[key] ]);
-	return items;
+	return ArrayFrom(items);
 }
 
 function _values(obj) {
-	var values = [ ];
-	forEach(keys(obj), function(key) {
+	var values = create(null);
+	values.length = 0;
+	_forEach(keys(obj), function(key) {
 			push(values, obj[key]);
 		});
-	return values;
+	return ArrayFrom(values);
 }
 
 function ReflectGetItems(obj) {
@@ -140,6 +142,7 @@ var _Reflect = own({
 	isLike: isLike,
 	own: own,
 	getUncommonPropertyNames: getUncommonPropertyNames,
+	// TODO: Is getOwnPropertyDescriptor going to de in ES6 Reflect? If so this needs to be renamed. (It should maybe be renamed any way.)
 	getOwnDescriptor: getOwnPropertyDescriptor,
 	getDescriptor: getPropertyDescriptor,
 	getItems: ReflectGetItems,

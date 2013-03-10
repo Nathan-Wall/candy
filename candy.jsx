@@ -145,7 +145,7 @@ var candy = (function(SecretExports, Object, Array, Function, String, Number, Ty
 
 								if (!oDesc || override && oDesc.configurable)
 									defineProperty(O, name,
-										getOwnPropertyDescriptor(module.instance, name));
+										_getOwnPropertyDescriptor(module.instance, name));
 
 							});
 					});
@@ -212,7 +212,7 @@ var candy = (function(SecretExports, Object, Array, Function, String, Number, Ty
 
 										if (!bDesc || override)
 											defineProperty(what, name,
-												getOwnPropertyDescriptor(coatWith, name));
+												_getOwnPropertyDescriptor(coatWith, name));
 
 									});
 
@@ -237,9 +237,9 @@ var candy = (function(SecretExports, Object, Array, Function, String, Number, Ty
 		var name = info.name,
 			module = candy[name] = info.module;
 		forEach(getOwnPropertyNames(module), function(name) {
-			var desc = getOwnPropertyDescriptor(module, name);
 			if (!hasOwn(candy, name))
-				defineProperty(candy, name, desc);
+				defineProperty(candy, name,
+					_getOwnPropertyDescriptor(module, name));
 		});
 	});
 

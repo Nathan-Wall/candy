@@ -5,8 +5,7 @@ function isIterable(obj) {
 
 function ToIterable(obj) {
 
-	var O = Object(obj),
-		iterator, S;
+	var O = Object(obj), S;
 
 	if (typeof $$(O, 'iterator') == 'function')
 		return O;
@@ -14,12 +13,18 @@ function ToIterable(obj) {
 	if (!('length' in O))
 		throw new TypeError('Cannot convert object to an iterator.');
 
-	iterator = create(ConvertedIteratorPrototype);
-
-	$Iterable(iterator).IterableObject = O;
-	$Iterable(iterator).IterableIndex = 0;
-
-	return _convertWrap(iterator);
+	return _convertWrap(function() {
+		// We copy ConvertedIteratorPrototype for now so that it can't be mucked with by external code.
+		// This *could* be an important step for ensuring integrity, since much of this and other libraries
+		// may depend on `forEach` with something like `arguments` (which will be converted using ToIterable)
+		// working correctly.
+		// TODO: Think more about whether ConvertedIteratorPrototype should be exposed. If so, the `copy` below can be changed to `create`.
+		// Note: My current thought is that it should stay as-is.
+		var iter = copy(ConvertedIteratorPrototype);
+		$Iterable(iter).IterableObject = O;
+		$Iterable(iter).IterableIndex = 0;
+		return iter;
+	});
 
 };
 
@@ -40,15 +45,16 @@ function forEach(obj, f/*, thisArg */) {
 		iter = $$(O, 'iterator'),
 		iterator, next;
 
-	if (iter) {
+	if (iter)
 		iterator = call(iter, O);
-	} else if ('length' in O)
+	else if ('length' in O)
 		iterator = call($$(ToIterable(O), 'iterator'), O);
 	else
 		throw new TypeError('Object cannot be iterated.');
 
 	try {
 		// TODO: What to do about the key/value pair vs value only problem?
+		// TODO: ! Note that the signature of the callback function is different from Array#forEach because the key/index is not passed as an argument. This is potentially a big problem. THINK MUCH ABOUT THIS!
 		while (true)
 			call(f, thisArg, iterator.next(), O);
 	} catch(x) {
@@ -161,7 +167,7 @@ var ConvertedIteratorPrototype = {
 
 	next: function next() {
 
-		if (object == null)
+		if (this == null)
 			throw new TypeError('next cannot be called on null or undefined.');
 
 		var O = Object(this),
@@ -170,15 +176,22 @@ var ConvertedIteratorPrototype = {
 		if (!object)
 			throw new TypeError('next can only be called on a ConvertedIterator.');
 
-		var index = $Iterable(O).IterableIndex,
+		var $I = $Iterable(O),
+			index = $I.IterableIndex,
 			L = object.length >>> 0;
 
 		while (index < L) {
-			if (index in object)
-				return [ index, object[index] ];
+			if (index in object) {
+				$I.IterableIndex = index + 1;
+				// TODO: Whether a pair is returned should probably depend on what Array.prototype@iterator() ends up doing.
+				// Keep up with the spec.
+				return object[index];
+				// return [ index, object[index] ];
+			}
 			index++;
 		}
 
+		$I.IterableIndex = index;
 		throw StopIteration;
 
 	}

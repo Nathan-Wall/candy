@@ -1,4 +1,5 @@
 // TODO: Use Spawn.mixin?
+// TODO: Rename to `mix` to avoid naming conflict with future ES `mixin`, since there may be a difference in the algorithms.
 function mixin(what/*, ...withs */) {
 
 	if (Object(what) != what)
@@ -13,7 +14,7 @@ function mixin(what/*, ...withs */) {
 
 		withO = Object(arguments[i]);
 
-		forEach(getUncommonPropertyNames(withO, what), function(name) {
+		_forEach(getUncommonPropertyNames(withO, what), function(name) {
 
 			var whatDesc = getPropertyDescriptor(what, name),
 				withDesc = getPropertyDescriptor(withO, name);
@@ -21,7 +22,7 @@ function mixin(what/*, ...withs */) {
 			if (!whatDesc || whatDesc.configurable)
 				// If what does not already have the property, or if what
 				// has the property and it's configurable, add it as is.
-				defineProperty(what, name, withDesc);
+				_defineProperty(what, name, withDesc);
 
 		});
 	}
@@ -45,7 +46,12 @@ function copy(what/*, ...withs */) {
 
 // We only want to define with own properties of the descriptor.
 function defineProperty(obj, name, desc) {
-	return _defineProperty(obj, name, own(desc));
+	if ('value' in desc && !hasOwn(desc, 'value')
+		|| 'get' in desc && !hasOwn(desc, 'get')
+		|| 'set' in desc && !hasOwn(desc, 'set')
+		|| 'writable' in desc && !hasOwn(desc, 'writable'))
+		desc = safeDescriptor(desc);
+	return _defineProperty(obj, name, desc);
 }
 
 var _Object = (function() {

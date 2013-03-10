@@ -1,3 +1,10 @@
+// TODO: Make sure functions which return arrays from array-likes actually return the appropriate subclasses (see `stableSort`).
+// TODO: Make sure anywhere this library (or others) create and use arrays (e.g. `var r = [ ]`) that they won't fall prey
+// to attacks like `Object.defineProperty(Array.prototype, '1', { set: function() { throw 'gotcha!'; } });`. Array methods
+// which are used to mutate arrays, such as `push`, should (by the spec) break under these types of attacks. It
+// is better when using arrays internally to actually just use an empty object `create(null)` rather than a real array
+// for this reason. Also see the `createSack` function in Resync.
+
 function isArrayLike(obj) {
  	// This tests for a class of Array-like objects.
  	// An Array-like object is an object with a length property which isn't a string or a function.
@@ -78,13 +85,13 @@ function pushAll(to, what) {
 }
 
 function flatten(array) {
-	var flattened = [ ];
+	var flattened = create(null);
 	forEach(array, function(u) {
 		if (isArrayLike(u))
 			pushAll(flattened, flatten(u));
 		else push(flattened, u);
 	});
-	return flattened;
+	return ArraySlice(flattened);
 }
 
 function mapToObject(array, f/*, context */) {
@@ -148,11 +155,11 @@ function stableSort() {
 		_sort = lazyBind(R.sort),
 		_ArrayFrom = Array.from,
 		nativeIsStable = (function() {
-			return testStability(32, 2) && testStability(512, 16);
+			return testStability(28, 2) && testStability(48, 4);
 			function testStability(size, resolution) {
 				var res = createRange(resolution),
 					r = _map(createRange(size), function(u) {
-						return mixin(map(res, function() {
+						return mixin(_map(res, function() {
 							return random() > .5 ? 0 : 1;
 						}), { i: u });
 					});
@@ -174,16 +181,18 @@ function stableSort() {
 		algorithm = nativeIsStable
 			? lazyBind(Array.prototype.sort)
 			: function stableSort(array, f) {
-				var sorted = _map(
-						_sort(_ArrayFrom(array, function(u, i) { return { value: u, index: i }; }),
-							function(a, b) { return (f ? f(a.value, b.value) : a.value - b.value) || a.index - b.index; }),
-						function(u) { return u.value; });
+				var sortedInfo = _sort(_ArrayFrom(array, function(u, i) { return { value: u, index: i }; }),
+						function(a, b) { return (f ? f(a.value, b.value) : a.value - b.value) || a.index - b.index; }),
+					// The map is done *on the original `array` argument* instead of the sortedInfo array in case
+					// `array` is a subclass of Array, in which case `sort` should return the subclass.
+					sorted = _map(array,
+						function(u, i) { return hasOwn(sortedInfo, i) ? sortedInfo[i].value : undefined; });
 				return CallConstruct(array, sorted);
 			};
 	stableSort = algorithm;
 	return apply(algorithm, this, arguments);
 	function createRange(total) {
-		var r = [ ];
+		var r = create(null);
 		for (var i = 0; i < total; i++)
 			push(r, i);
 		return r;

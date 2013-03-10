@@ -56,9 +56,9 @@ function createWrapper(f/*, length = f.length */, wrapF) {
 						+ 'return (function " + name + "_(' + _join(args, ',') + ') {'
 							+ 'return apply(wrapF, this, arguments);'
 						+ '});'
-					+ '})");'
+					+ '})")(wrapF, original, name, apply);'
 					+ 'wrapper.original = original;'
-					+ 'return wrapper(wrapF, original, name, apply);'
+					+ 'return wrapper;'
 				+ '})'
 			);
 
@@ -181,7 +181,7 @@ function lazyBind(f/*, ...preArgs */) {
 
 	return lazyBound;
 
-};
+}
 
 function contextualize(f/*, ...preArgs */) {
 	// The opposite of lazyBind, this function returns a wrapper which calls f, passing the wrapper's context as

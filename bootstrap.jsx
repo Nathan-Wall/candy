@@ -2,22 +2,42 @@ var $Candy = createSecret(),
 	$Function = createSecret(),
 	$Iterable = createSecret(),
 
-	_eval = eval, // `eval` is reserved in strict mode.
+ 	// `eval` is reserved in strict mode.
+ 	// Also, we want to use indirect eval so that implementations can take advantage
+ 	// of memory & performance enhancements which are possible without direct eval.
+	_eval = eval,
+
+	// An internal-use-only lazyBind for improved performance. Note: Do not use this function to lazyBind
+	// functions which will be exposed externally, as it won't set the `length` of the lazyBound function
+	// correctly. Instead use regular `lazyBind` (without the underscore prefix).
+	_lazyBind = Function.prototype.bind.bind(Function.prototype.call),
 
 	// The following are for internal use. They're needed to get lazyBind off the ground.
-	_apply = Function.prototype.call.bind(Function.prototype.apply),
-	_ArraySlice = Function.prototype.call.bind(Array.prototype.slice),
-	_concat = Function.prototype.call.bind(Array.prototype.concat),
-	_push = Function.prototype.call.bind(Array.prototype.push),
-	_join = Function.prototype.call.bind(Array.prototype.join),
-	_replace = Function.prototype.call.bind(String.prototype.replace),
-	_forEach = Function.prototype.call.bind(Array.prototype.forEach),
+	_apply = _lazyBind(Function.prototype.apply),
+	_ArraySlice = _lazyBind(Array.prototype.slice),
+	_concat = _lazyBind(Array.prototype.concat),
+	_push = _lazyBind(Array.prototype.push),
+	_join = _lazyBind(Array.prototype.join),
+	_replace = _lazyBind(String.prototype.replace),
+	_forEach = _lazyBind(Array.prototype.forEach),
+	_filter = _lazyBind(Array.prototype.filter),
+	_map = _lazyBind(Array.prototype.map),
 
+	protoIsMutable = (function() {
+		// TODO: Keep up-to-date with whether ES6 goes with __proto__ or Reflect.setPrototypeOf.
+		var A = Object.create(null),
+			A2 = Object.create(null),
+			B = Object.create(A);
+		B.__proto__ = A2;
+		return Object.getPrototypeOf(B) === A2;
+	})(),
+
+	// TODO: Use _lazyBind when possible.
 	is = Object.is,
 	create = Object.create,
 	getPrototypeOf = Object.getPrototypeOf,
-	isPrototypeOf = lazyBind(Object.prototype.isPrototypeOf),
-	ToString = lazyBind(Object.prototype.toString),
+	isPrototypeOf = _lazyBind(Object.prototype.isPrototypeOf),
+	ToString = _lazyBind(Object.prototype.toString),
 	keys = Object.keys,
 	getOwnPropertyNames = Object.getOwnPropertyNames,
 	_getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor,
@@ -27,37 +47,38 @@ var $Candy = createSecret(),
 	has = Reflect.has,
 	hasOwn = Reflect.hasOwn,
 
-	call = lazyBind(Function.prototype.call),
-	apply = lazyBind(Function.prototype.apply),
+	call = _lazyBind(Function.prototype.call),
+	apply = _lazyBind(Function.prototype.apply),
 
 	isArray = Array.isArray,
-	ArraySlice = lazyBind(Array.prototype.slice),
-	concat = lazyBind(Array.prototype.concat),
-	ArrayForEach = lazyBind(Array.prototype.forEach),
-	ArraySome = lazyBind(Array.prototype.some),
-	ArrayEvery = lazyBind(Array.prototype.every),
-	ArrayReduce = lazyBind(Array.prototype.reduce),
-	join = lazyBind(Array.prototype.join),
-	push = lazyBind(Array.prototype.push),
-	pop = lazyBind(Array.prototype.pop),
-	shift = lazyBind(Array.prototype.shift),
-	unshift = lazyBind(Array.prototype.unshift),
-	sort = lazyBind(Array.prototype.sort),
-	contains = lazyBind(Array.prototype.contains),
-	reverse = lazyBind(Array.prototype.reverse),
-	ArrayIterator = lazyBind($$(Array.prototype, 'iterator')),
+	ArraySlice = _lazyBind(Array.prototype.slice),
+	concat = _lazyBind(Array.prototype.concat),
+	// TODO: Many of these are duplicated in the underscore functions above (like _forEach). Remove this redundancy.
+	ArrayForEach = _lazyBind(Array.prototype.forEach),
+	ArraySome = _lazyBind(Array.prototype.some),
+	ArrayEvery = _lazyBind(Array.prototype.every),
+	ArrayReduce = _lazyBind(Array.prototype.reduce),
+	join = _lazyBind(Array.prototype.join),
+	push = _lazyBind(Array.prototype.push),
+	pop = _lazyBind(Array.prototype.pop),
+	shift = _lazyBind(Array.prototype.shift),
+	unshift = _lazyBind(Array.prototype.unshift),
+	sort = _lazyBind(Array.prototype.sort),
+	contains = _lazyBind(Array.prototype.contains),
+	reverse = _lazyBind(Array.prototype.reverse),
+	ArrayIterator = _lazyBind($$(Array.prototype, 'iterator')),
 
-	StringSlice = lazyBind(String.prototype.slice),
-	split = lazyBind(String.prototype.split),
-	replace = lazyBind(String.prototype.replace),
+	StringSlice = _lazyBind(String.prototype.slice),
+	split = _lazyBind(String.prototype.split),
+	replace = _lazyBind(String.prototype.replace),
 
 	random = Math.random,
 
-	WeakMapGet = lazyBind(WeakMap.prototype.get),
-	WeakMapSet = lazyBind(WeakMap.prototype.set),
+	WeakMapGet = _lazyBind(WeakMap.prototype.get),
+	WeakMapSet = _lazyBind(WeakMap.prototype.set),
 
 	// TODO: has might change to contains in upcoming draft
-	SetContains = lazyBind(Set.prototype.has),
+	SetContains = _lazyBind(Set.prototype.has),
 
 	_setTimeout = typeof setTimeout == 'function' ? setTimeout : undefined,
 	_clearTimeout = typeof clearTimeout == 'function' ? clearTimeout : undefined;
@@ -91,7 +112,7 @@ function methods(builtIn, staticO, instance) {
 
 			if (name == 'constructor') return;
 
-			var desc = getOwnPropertyDescriptor(obj, name),
+			var desc = _getOwnPropertyDescriptor(obj, name),
 				method = desc && desc.value;
 
 			if (typeof method == 'function') {
@@ -127,7 +148,7 @@ function methods(builtIn, staticO, instance) {
 
 			if (name == 'constructor') return;
 
-			var desc = getOwnPropertyDescriptor(staticO, name),
+			var desc = _getOwnPropertyDescriptor(staticO, name),
 				method = desc && desc.value;
 
 			if (typeof method == 'function')
@@ -156,4 +177,15 @@ function CallConstruct(withObj, onObj) {
 			onObj = constructed;
 	}
 	return onObj;
+}
+
+function safeDescriptor(obj) {
+	if (obj == null)
+		throw new TypeError('Argument cannot be null or undefined.');
+	obj = Object(obj);
+	var O = create(null),
+		k = keys(obj);
+	for (var i = 0, key = k[i]; key = k[i], i < k.length; i++)
+		O[key] = obj[key];
+	return O;
 }
